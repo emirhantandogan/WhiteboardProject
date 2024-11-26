@@ -74,6 +74,6 @@ class ClientController:
         whiteboard_view = WhiteboardView(self.view.root, lobby_name, users, self)
 
         # Sunucudan çizim verilerini düzenli olarak al ve canvas'ı güncelle
-        # self.model.listen_for_draw_updates(lobby_name, whiteboard_view.update_canvas)
+        self.model.listen_for_user_updates(whiteboard_view.update_user_list)
 
 

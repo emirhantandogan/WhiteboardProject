@@ -37,8 +37,6 @@ class WhiteboardView:
         self.canvas = Canvas(right_frame, bg="white", cursor="cross")
         self.canvas.grid(row=0, column=0, sticky="nsew")
 
-        # Çizim işlevlerini bağlama
-        self.canvas.bind("<B1-Motion>", self.draw)
 
         # Lobi adı
         Label(left_frame, text=f"Lobby: {lobby_name}", bg="white", font=("Arial", 16)).grid(
@@ -55,42 +53,8 @@ class WhiteboardView:
         # Kullanıcı listesini doldur
         self.update_user_list(users)
 
-        # Sunucuya düzenli aralıklarla çizim verilerini gönderen bir thread başlat
-        self.start_draw_update_thread()
-
-        self.refresh_button = GUIHelper.create_button(left_frame, "Refresh Lobbies")
-        self.refresh_button.grid(row=5, column=0, padx=10, pady=5, sticky="new")
-        self.refresh_button.config(command=self.call_data)
-
     def update_user_list(self, users):
         """Kullanıcı listesini günceller."""
         self.user_listbox.delete(0, END)
         for user in users:
             self.user_listbox.insert(END, user)
-
-    def draw(self, event):
-        """Canvas üzerine çizim yapar ve koordinatları listeye ekler."""
-        x, y = event.x, event.y
-        self.canvas.create_oval(x, y, x + 2, y + 2, fill="black", outline="black")
-        self.draw_data.append((x, y))  # Koordinatları listeye ekle
-
-    def start_draw_update_thread(self):
-        """Sunucuya düzenli olarak çizim verilerini göndermek için bir thread çalıştırır."""
-        def update_server():
-            while True:
-                if self.draw_data:
-                    # Sunucuya çizim verilerini gönder
-                    self.controller.model.send_draw_data_batch(self.lobby_name, self.draw_data)
-                    self.draw_data.clear()  # Listeyi temizle
-                time.sleep(5)  # 5 saniyede bir gönderim yap
-
-        threading.Thread(target=update_server, daemon=True).start()
-
-    def update_canvas(self, draw_data):
-        """Sunucudan gelen çizim verilerini Canvas'a çizer."""
-        for x, y in draw_data:
-            self.canvas.create_oval(x, y, x + 2, y + 2, fill="black", outline="black")
-
-
-    def call_data(self):
-        self.controller.model.call_data(self.lobby_name, self.update_canvas)

@@ -77,29 +77,6 @@ def handle_client(client_socket, client_address):
                 else:
                     client_socket.send("ERROR: Lobby not found!".encode())
 
-            if command == "DRAW_BATCH":
-                lobby_name, serialized_data = data.split('|')
-                print("DRAW_BATCH:", serialized_data)
-                if lobby_name not in lobbies_draw_data:
-                    lobbies_draw_data[lobby_name] = []
-
-                # Veriyi çözümle: "(x1,y1);(x2,y2)" -> [(x1, y1), (x2, y2)]
-                new_draw_data = [
-                    tuple(map(int, coords.strip("()").split(',')))
-                    for coords in serialized_data.split(';')
-                ]
-                lobbies_draw_data[lobby_name].extend(new_draw_data)
-
-
-            elif command == "GET_DRAW_DATA":
-                lobby_name = data.strip()
-                if lobby_name in lobbies_draw_data:
-                    draw_data = lobbies_draw_data[lobby_name]
-                    # Her x, y çiftini (x,y) formatında gönder
-                    serialized_data = ";".join(f"({x},{y})" for x, y in draw_data)
-                    client_socket.send(f"DRAW_DATA:{serialized_data}".encode())
-                else:
-                    client_socket.send("DRAW_DATA:".encode())
 
     except ConnectionResetError:
         print(f"Connection reset by client: {client_address}")
@@ -130,6 +107,25 @@ def broadcast_to_lobby(lobby_name, message):
             except Exception as e:
                 print(f"Error broadcasting to client: {e}")
 
+# UDP Sunucu İşleme
+def handle_udp():
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.bind((HOST, UDP_PORT))
+    print(f"UDP Server started on {HOST}:{UDP_PORT}")
+
+    while True:
+        try:
+            data, addr = udp_socket.recvfrom(4096)
+            if addr not in udp_clients:
+                udp_clients.append(addr)
+
+            # Gelen veriyi çözümle ve aynı lobiye bağlı tüm istemcilere gönder
+            serialized_data = data.decode()
+            for client in udp_clients:
+                if client != addr:  # Gönderen hariç
+                    udp_socket.sendto(serialized_data.encode(), client)
+        except Exception as e:
+            print(f"Error in UDP server: {e}")
 
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
