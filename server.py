@@ -107,25 +107,6 @@ def broadcast_to_lobby(lobby_name, message):
             except Exception as e:
                 print(f"Error broadcasting to client: {e}")
 
-# UDP Sunucu İşleme
-def handle_udp():
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_socket.bind((HOST, UDP_PORT))
-    print(f"UDP Server started on {HOST}:{UDP_PORT}")
-
-    while True:
-        try:
-            data, addr = udp_socket.recvfrom(4096)
-            if addr not in udp_clients:
-                udp_clients.append(addr)
-
-            # Gelen veriyi çözümle ve aynı lobiye bağlı tüm istemcilere gönder
-            serialized_data = data.decode()
-            for client in udp_clients:
-                if client != addr:  # Gönderen hariç
-                    udp_socket.sendto(serialized_data.encode(), client)
-        except Exception as e:
-            print(f"Error in UDP server: {e}")
 
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
