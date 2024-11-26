@@ -1,16 +1,15 @@
-# This is a sample Python script.
+from tkinter import Tk
+from Model.client_model import ClientModel
+from View.lobby_view import LobbyView
+from Controller.client_controller import ClientController
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+if __name__ == "__main__":
+    root = Tk()
 
+    #localde deniyorsan server ipv4 : 127.0.0.1
+    model = ClientModel("127.0.0.1", 12345)  # Sunucu adresini burada ayarlayın
+    view = LobbyView(root)
+    controller = ClientController(model, view)
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    root.geometry("800x400")
+    root.mainloop()

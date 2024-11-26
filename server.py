@@ -5,8 +5,14 @@ import threading
 HOST = '0.0.0.0'  # Her yerden bağlantı kabul eder
 PORT = 12345
 
-lobbies = {}  # {lobi_ismi: [client_socket1, client_socket2, ...]}
+import hashlib
 
+def encrypt_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+lobbies = {}  # {lobi_ismi: {"password": şifre, "clients": {client_socket: "username"}}}
+
+lobbies_draw_data = {}
 
 def handle_client(client_socket, client_address):
     global lobbies
@@ -19,9 +25,12 @@ def handle_client(client_socket, client_address):
             command, data = message.split(':', 1)
 
             if command == "CREATE":
-                lobby_name = data.strip()
+                lobby_name, *password = data.strip().split('|')
                 if lobby_name not in lobbies:
-                    lobbies[lobby_name] = [client_socket]
+                    lobbies[lobby_name] = {
+                        "password": password[0] if password else None,
+                        "clients": {},  # Sözlük olarak başlatılıyor
+                    }
                     client_socket.send("LOBBY_CREATED".encode())
                 else:
                     client_socket.send("ERROR: Lobby already exists!".encode())
@@ -31,24 +40,87 @@ def handle_client(client_socket, client_address):
                 client_socket.send(f"LOBBIES:{lobby_list}".encode())
 
             elif command == "JOIN":
+                lobby_name, username = data.strip().split('|')
+                if lobby_name in lobbies and not lobbies[lobby_name]["password"]:
+                    lobbies[lobby_name]["clients"][client_socket] = username
+                    client_socket.send("JOINED_LOBBY".encode())
+
+                    # Güncellenmiş kullanıcı listesini yayınla
+                    users = list(lobbies[lobby_name]["clients"].values())
+                    broadcast_to_lobby(lobby_name, f"USERS:{','.join(users)}")
+                else:
+                    client_socket.send("PASSWORD_REQUIRED".encode())
+
+            elif command == "JOIN_WITH_PASSWORD":
+                lobby_name, password, username = data.strip().split('|')
+                print(lobbies[lobby_name]["password"])
+                print(password)
+                if lobby_name in lobbies and lobbies[lobby_name]["password"] == password:
+                    lobbies[lobby_name]["clients"][client_socket] = username
+                    client_socket.send("JOINED_LOBBY".encode())
+
+                    # Güncellenmiş kullanıcı listesini yayınla
+                    users = list(lobbies[lobby_name]["clients"].values())
+                    broadcast_to_lobby(lobby_name, f"USERS:{','.join(users)}")
+                else:
+                    client_socket.send("ERROR: Incorrect password!".encode())
+
+            elif command == "GET_USERS":
                 lobby_name = data.strip()
                 if lobby_name in lobbies:
-                    lobbies[lobby_name].append(client_socket)
-                    client_socket.send("JOINED_LOBBY".encode())
+                    users = list(lobbies[lobby_name]["clients"].values())  # Kullanıcı adlarını al
+                    client_socket.send(f"USERS:{','.join(users)}".encode())
                 else:
                     client_socket.send("ERROR: Lobby not found!".encode())
+
+            if command == "DRAW_BATCH":
+                lobby_name, serialized_data = data.split('|')
+                print("DRAW_BATCH:", serialized_data)
+                if lobby_name not in lobbies_draw_data:
+                    lobbies_draw_data[lobby_name] = []
+
+                # Veriyi çözümle: "(x1,y1);(x2,y2)" -> [(x1, y1), (x2, y2)]
+                new_draw_data = [
+                    tuple(map(int, coords.strip("()").split(',')))
+                    for coords in serialized_data.split(';')
+                ]
+                lobbies_draw_data[lobby_name].extend(new_draw_data)
+
+
+            elif command == "GET_DRAW_DATA":
+                lobby_name = data.strip()
+                if lobby_name in lobbies_draw_data:
+                    draw_data = lobbies_draw_data[lobby_name]
+                    # Her x, y çiftini (x,y) formatında gönder
+                    serialized_data = ";".join(f"({x},{y})" for x, y in draw_data)
+                    client_socket.send(f"DRAW_DATA:{serialized_data}".encode())
+                else:
+                    client_socket.send("DRAW_DATA:".encode())
+
 
     except Exception as e:
         print(f"Error: {e}")
     finally:
-        # Bağlantıyı temizle
-        for lobby_name, clients in lobbies.items():
-            if client_socket in clients:
-                clients.remove(client_socket)
-                if not clients:  # Eğer lobide kimse kalmazsa sil
+        for lobby_name, lobby_data in lobbies.items():
+            if client_socket in lobby_data["clients"]:
+                del lobby_data["clients"][client_socket]
+                if not lobby_data["clients"]:
                     del lobbies[lobby_name]
+                else:
+                    # Güncellenmiş kullanıcı listesini yayınla
+                    users = list(lobby_data["clients"].values())
+                    broadcast_to_lobby(lobby_name, f"USERS:{','.join(users)}")
                 break
         client_socket.close()
+
+def broadcast_to_lobby(lobby_name, message):
+    """Belirtilen lobiye bağlı tüm istemcilere mesaj gönder."""
+    if lobby_name in lobbies:
+        for client_socket in lobbies[lobby_name]["clients"].keys():
+            try:
+                client_socket.send(message.encode())
+            except Exception as e:
+                print(f"Error broadcasting to client: {e}")
 
 
 def main():
