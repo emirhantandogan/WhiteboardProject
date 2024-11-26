@@ -22,7 +22,7 @@ def handle_client(client_socket, client_address):
             if not message:
                 break
 
-            if len(message) > 1024:  # Örneğin 1024 byte'tan büyük mesajlar için
+            if len(message) > 1024:
                 print("Message too large, ignoring...")
                 return
 
@@ -101,7 +101,10 @@ def handle_client(client_socket, client_address):
                 else:
                     client_socket.send("DRAW_DATA:".encode())
 
-
+    except ConnectionResetError:
+        print(f"Connection reset by client: {client_address}")
+    except socket.timeout:
+        print("Client connection timed out.")
     except Exception as e:
         print(f"Error: {e}")
     finally:
@@ -115,6 +118,7 @@ def handle_client(client_socket, client_address):
                     users = list(lobby_data["clients"].values())
                     broadcast_to_lobby(lobby_name, f"USERS:{','.join(users)}")
                 break
+        print(f"Closing connection for client: {client_address}")
         client_socket.close()
 
 def broadcast_to_lobby(lobby_name, message):
