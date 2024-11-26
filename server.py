@@ -22,6 +22,10 @@ def handle_client(client_socket, client_address):
             if not message:
                 break
 
+            if len(message) > 1024:  # Örneğin 1024 byte'tan büyük mesajlar için
+                print("Message too large, ignoring...")
+                return
+
             command, data = message.split(':', 1)
 
             if command == "CREATE":
@@ -126,7 +130,7 @@ def broadcast_to_lobby(lobby_name, message):
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
-    server_socket.listen(5)
+    server_socket.listen(20)
     print(f"Server started on {HOST}:{PORT}")
 
     while True:

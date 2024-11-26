@@ -7,7 +7,7 @@ if __name__ == "__main__":
     root = Tk()
 
     #localde deniyorsan server ipv4 : 127.0.0.1
-    model = ClientModel("127.0.0.1", 12345)  # Sunucu adresini burada ayarlayın
+    model = ClientModel("13.51.47.203", 12345)  # Sunucu adresini burada ayarlayın
     view = LobbyView(root)
     controller = ClientController(model, view)
 
