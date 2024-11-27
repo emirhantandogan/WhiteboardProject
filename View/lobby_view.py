@@ -2,7 +2,8 @@ from tkinter import Tk, Label, Button, Entry, Frame, Canvas, Scrollbar, VERTICAL
 from View.gui_helper import GUIHelper
 
 class LobbyView:
-    def __init__(self, root):
+    def __init__(self, root, controller):
+        self.controller = controller
         self.root = root
         self.root.title("Online Whiteboard")
 
@@ -61,6 +62,9 @@ class LobbyView:
         self.canvas.grid(row=1, column=0, sticky="nsew", padx=(10, 0), pady=5)
         self.scrollbar.grid(row=1, column=1, sticky="ns", padx=(0, 10), pady=5)
 
+        self.send_button = Button(left_frame, text="Send to Server")
+        self.send_button.grid(row=9, column=0, pady=10)
+
     def update_lobby_list(self, lobbies, join_callback):
         # Mevcut lobileri temizle
         for widget in self.lobby_frame.winfo_children():
@@ -93,4 +97,5 @@ class LobbyView:
 
     def get_username(self):
         return self.username_entry.get_actual_value()
+
 

@@ -1,4 +1,4 @@
-from tkinter import Toplevel, Frame, Label, Listbox, END, Canvas
+from tkinter import Toplevel, Frame, Label, Listbox, END, Canvas, Button
 from View.gui_helper import GUIHelper
 
 import threading
@@ -36,7 +36,7 @@ class WhiteboardView:
         # Sağ taraf: Çizim yapılabilir bir Canvas alanı
         self.canvas = Canvas(right_frame, bg="white", cursor="cross")
         self.canvas.grid(row=0, column=0, sticky="nsew")
-
+        self.canvas.bind("<B1-Motion>", self.draw_on_canvas)
 
         # Lobi adı
         Label(left_frame, text=f"Lobby: {lobby_name}", bg="white", font=("Arial", 16)).grid(
@@ -53,8 +53,41 @@ class WhiteboardView:
         # Kullanıcı listesini doldur
         self.update_user_list(users)
 
+        # "Send Draw Data" butonu
+        send_button = Button(right_frame, text="Send Draw Data", command=self.send_draw_data)
+        send_button.grid(row=1, column=0, padx=10, pady=10, sticky="new")
+
+        self.send_draw_data_periodically()
+
     def update_user_list(self, users):
         """Kullanıcı listesini günceller."""
         self.user_listbox.delete(0, END)
         for user in users:
             self.user_listbox.insert(END, user)
+
+    def draw_on_canvas(self, event):
+        """Canvas üzerinde çizim yapılmasını sağlar."""
+        x, y = event.x, event.y
+        r = 2
+        self.canvas.create_oval(x - r, y - r, x + r, y + r, fill="black", outline="black")
+        self.draw_data.append((x, y))
+
+    def send_draw_data(self):
+        self.controller.send_draw_data(self.lobby_name, self.draw_data)
+        self.draw_data = []
+
+    def send_draw_data_periodically(self):
+        if len(self.draw_data) > 5:
+            self.send_draw_data()
+
+        self.root.after(500, self.send_draw_data_periodically)
+
+    def get_draw_data(self, list):
+        return list
+
+    def draw_data_getted_from_server(self, list):
+        print("drawing this:", list)
+        #get_draw_data metodu yerine listeyi aldığında bu listedeki koordinatlara göre canvasa çizimi gerçekleştiren bir metod yaz.
+        for x, y in list:
+            self.canvas.create_oval(x - 2, y - 2, x + 2, y + 2, fill="black", outline="black")
+

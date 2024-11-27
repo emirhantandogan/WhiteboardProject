@@ -1,14 +1,13 @@
 import socket
 import threading
-
-# Sunucu Ayarları
-HOST = '0.0.0.0'  # Her yerden bağlantı kabul eder
-PORT = 12345
-
 import hashlib
 
 def encrypt_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+# Sunucu Ayarları
+HOST = '0.0.0.0'  # Her yerden bağlantı kabul eder
+PORT = 12345
 
 lobbies = {}  # {lobi_ismi: {"password": şifre, "clients": {client_socket: "username"}}}
 
@@ -19,16 +18,49 @@ def handle_client(client_socket, client_address):
     try:
         while True:
             message = client_socket.recv(1024).decode()
-            if not message:
-                break
 
-            if len(message) > 1024:
-                print("Message too large, ignoring...")
-                return
+            data = None
+            if ':' in message:
+                command, data = message.split(':', 1)
+            else:
+                command = message
 
-            command, data = message.split(':', 1)
+            print("last command:", command)
 
-            if command == "CREATE":
+            if command == "PING":
+                client_socket.send("PONG".encode())
+
+            elif command == "SEND_DRAW":
+                lobby_name, serialized_data = data.strip().split('|', 1)
+                print(lobby_name)
+                print(serialized_data)
+                if not serialized_data:
+                    client_socket.send("ERROR: No serialized".encode())
+                else:
+                    if lobby_name in lobbies:
+                        # Çizim verilerini ayrıştır
+                        draw_data = [tuple(map(int, coord.split(','))) for coord in serialized_data.split(';')]
+                        print(draw_data)
+                        if lobby_name not in lobbies_draw_data:
+                            lobbies_draw_data[lobby_name] = []
+                        lobbies_draw_data[lobby_name].extend(draw_data)
+
+                        '''
+                        Burda önce DRAW_DATA_RECEIVED göndermemiz lazım çünkü implementasyonumuzdaki send message aynı zamanda
+                        receive message yapıyor yani send ettiğinin receive olduğunu anlaması lazım. Eğerki DRAW_DATA_RECEIVED
+                        göndermezsek DRAW_DATA 'yı receive eder bu durumda da bizim client modeldeki listen_for_draw_updates metodumuz
+                        DRAW_DATA'yı elde edemez çünkü zaten send_message tarafında receive edildi ve buffer boşaltıldı.
+                        '''
+
+                        client_socket.send("DRAW_DATA_RECEIVED".encode())
+                        print(lobbies_draw_data)
+
+                        broadcast_to_lobby(lobby_name, f"DRAW_DATA:{serialized_data}\n")
+                    else:
+                        client_socket.send("ERROR: Lobby not found!".encode())
+
+
+            elif command == "CREATE":
                 lobby_name, *password = data.strip().split('|')
                 if lobby_name not in lobbies:
                     lobbies[lobby_name] = {
@@ -104,8 +136,10 @@ def broadcast_to_lobby(lobby_name, message):
         for client_socket in lobbies[lobby_name]["clients"].keys():
             try:
                 client_socket.send(message.encode())
+                print("message sent : ", message.encode())
             except Exception as e:
                 print(f"Error broadcasting to client: {e}")
+
 
 
 def main():

@@ -10,6 +10,7 @@ class ClientController:
 
         self.view.create_button.config(command=self.create_lobby)
         self.view.refresh_button.config(command=self.refresh_lobbies)
+        self.view.send_button.config(command=self.send_ping)
 
     def create_lobby(self):
         lobby_name = self.view.lobby_name_entry.get()
@@ -73,7 +74,24 @@ class ClientController:
         self.view.root.withdraw()
         whiteboard_view = WhiteboardView(self.view.root, lobby_name, users, self)
 
+
+
         # Sunucudan çizim verilerini düzenli olarak al ve canvas'ı güncelle
         self.model.listen_for_user_updates(whiteboard_view.update_user_list)
+        self.model.listen_for_draw_updates(whiteboard_view.draw_data_getted_from_server)
+
+        self.send_ping()
+        self.send_ping()
+        self.send_ping()
+
+
+    def send_ping(self):
+        self.model.send_ping()
+
+    def send_draw_data(self, lobby_name, draw_data):
+        self.model.send_draw_data(lobby_name, draw_data)
+
+
+
 
 
